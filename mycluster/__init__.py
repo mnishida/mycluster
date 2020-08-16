@@ -32,7 +32,7 @@ class Cluster():
         self.passphrase = getpass.getpass('passphrase: ')
         self.host = socket.gethostname()
         self.ip = socket.gethostbyname(self.host)
-        self.bin = f"/home/{self.user}/.envs/cm/bin/"
+        self.bin = f"{sys.prefix}/bin/"
         self.idfile = f'/home/{self.user}/.ssh/id_rsa'
         self.profile_dir = f"/home/{self.user}/.ipython/profile_default"
         self.ipcontroller = self.bin + 'ipcontroller'
