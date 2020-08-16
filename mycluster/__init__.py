@@ -118,6 +118,10 @@ class Cluster():
             rc.close()
             print(f'A cluster with {self.num_engines} engines started successfully')
 
+    def start(self):
+        self.start_controller()
+        self.start_engines()
+
     def stop_engines(self):
         for engine in self.engines:
             engine.sendintr()
