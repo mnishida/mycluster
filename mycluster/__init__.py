@@ -66,7 +66,7 @@ class Cluster():
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         filename = self.profile_dir + "/security/ipcontroller-engine.json"
         for host, num, num_threads in self.hosts:
-            if host in ['gromit', 'localhost']:
+            if host in [self.host, 'localhost']:
                 continue
             ssh.connect(host, username=self.user, password=self.passphrase,
                         key_filename=self.idfile)
@@ -94,7 +94,7 @@ class Cluster():
                         f'{self.ipengine} {args}')
                     for i in range(num):
                         engine = pexpect.spawn(cmd, encoding='utf-8')
-                        # engine.logfile_read = sys.stdout
+                        engine.logfile_read = sys.stdout
                         engine.expect(rf"Enter passphrase for key '{self.idfile}': ")
                         engine.sendline(self.passphrase)
                         engine.expect(r"Completed registration with id")
