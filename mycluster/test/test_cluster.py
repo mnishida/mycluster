@@ -25,7 +25,7 @@ def test_hostsfile():
     assert_equal(hosts, cluster.hosts)
     cluster.start_controller()
     cluster.start_engines()
-    rc = Client(profile="ssh")
+    rc = Client()
     assert_equal(len(rc.ids), 2)
     cluster.shutdown()
 
@@ -39,7 +39,7 @@ def test_environ():
     cluster = Cluster(hosts)
     cluster.start_controller()
     cluster.start_engines()
-    rc = Client(profile="ssh")
+    rc = Client()
     dview = rc[:]
     dview.block = True
     print(rc.ids)

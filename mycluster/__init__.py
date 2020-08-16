@@ -7,6 +7,7 @@ __license__ = "GPLv3"
 import pexpect
 import sys
 import time
+import socket
 import getpass
 import signal
 import asyncio
@@ -29,9 +30,11 @@ class Cluster():
         self.num_engines = 0
         self.user = getpass.getuser()
         self.passphrase = getpass.getpass('passphrase: ')
+        self.host = socket.gethostname()
+        self.ip = socket.gethostbyname(self.host)
         self.bin = f"/home/{self.user}/.envs/cm/bin/"
         self.idfile = f'/home/{self.user}/.ssh/id_rsa'
-        self.profile_dir = f"/home/{self.user}/.ipython/profile_ssh"
+        self.profile_dir = f"/home/{self.user}/.ipython/profile_default"
         self.ipcontroller = self.bin + 'ipcontroller'
         self.ipengine = self.bin + 'ipengine'
         self.pcontroller = None
@@ -47,7 +50,7 @@ class Cluster():
 
     def start_controller(self):
         if self.pcontroller is None:
-            cmd = (self.ipcontroller + " --profile=ssh")
+            cmd = (self.ipcontroller + f" --ip={self.ip}")
             p = pexpect.spawn(cmd, encoding='utf-8')
             p.logfile_read = sys.stdout
             p.expect(r"client::client \[.+\] connected", timeout=60)
@@ -86,7 +89,7 @@ class Cluster():
                     self.num_engines += num
                     s = ("import os; " +
                         f"os.environ.update(OMP_NUM_THREADS=str({num_threads}))")
-                    args = rf'--profile=ssh --profile-dir={self.profile_dir} -c \"{s}\"'
+                    args = rf'--profile-dir={self.profile_dir} -c \"{s}\"'
                     cmd = (f'ssh -i {self.idfile} {self.user}@{host} ' +
                         f'{self.ipengine} {args}')
                     for i in range(num):
@@ -98,7 +101,7 @@ class Cluster():
                         # time.sleep(0.25)
                         self.engines.append(engine)
                     print(f"{host}: engines started")
-                rc = Client(profile='ssh', timeout=30)
+                rc = Client(timeout=30)
             except:
                 print('Some engines could not start successfully')
                 sys.exit()
@@ -133,7 +136,7 @@ class Cluster():
             self.start_engines()
             self._loop.run_forever()
         finally:
-            self.shutdown(self.engines)
+            self.shutdown()
             self._loop.close()
 
     def _ask_exit(self, signame):
