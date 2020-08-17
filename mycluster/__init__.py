@@ -22,7 +22,7 @@ class TimeoutExpired(Exception):
 
 class Cluster():
 
-    def __init__(self, hosts):
+    def __init__(self, hosts, log=False):
         if isinstance(hosts, str):
             self.hosts = self.load_hosts(hosts)
         else:
@@ -39,6 +39,7 @@ class Cluster():
         self.ipengine = self.bin + 'ipengine'
         self.pcontroller = None
         self.engines = []
+        self.log = log
 
     def load_hosts(self, hostsfile):
         hosts = []
@@ -52,7 +53,8 @@ class Cluster():
         if self.pcontroller is None:
             cmd = (self.ipcontroller + f" --ip={self.ip}")
             p = pexpect.spawn(cmd, encoding='utf-8')
-            p.logfile_read = sys.stdout
+            if self.log:
+                p.logfile_read = sys.stdout
             p.expect(r"client::client \[.+\] connected", timeout=60)
             self.pcontroller = p
         else:
@@ -94,7 +96,8 @@ class Cluster():
                         f'{self.ipengine} {args}')
                     for i in range(num):
                         engine = pexpect.spawn(cmd, encoding='utf-8')
-                        engine.logfile_read = sys.stdout
+                        if self.log:
+                            engine.logfile_read = sys.stdout
                         engine.expect(rf"Enter passphrase for key '{self.idfile}': ")
                         engine.sendline(self.passphrase)
                         engine.expect(r"Completed registration with id")
