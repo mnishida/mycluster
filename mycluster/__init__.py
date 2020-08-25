@@ -22,18 +22,18 @@ class TimeoutExpired(Exception):
 
 class Cluster():
 
-    def __init__(self, hosts, log=False):
+    def __init__(self, hosts, id='id_rsa_mc', log=False):
         if isinstance(hosts, str):
             self.hosts = self.load_hosts(hosts)
         else:
             self.hosts = hosts
         self.num_engines = 0
         self.user = getpass.getuser()
-        self.passphrase = getpass.getpass('passphrase: ')
+        # self.passphrase = getpass.getpass('passphrase: ')
         self.host = socket.gethostname()
         self.ip = socket.gethostbyname(self.host)
         self.bin = f"{sys.prefix}/bin/"
-        self.idfile = f'/home/{self.user}/.ssh/id_rsa'
+        self.id_file = f'/home/{self.user}/.ssh/{id}'
         self.profile_dir = f"/home/{self.user}/.ipython/profile_default"
         self.ipcontroller = self.bin + 'ipcontroller'
         self.ipengine = self.bin + 'ipengine'
@@ -70,8 +70,9 @@ class Cluster():
         for host, num, num_threads in self.hosts:
             if host in [self.host, 'localhost']:
                 continue
-            ssh.connect(host, username=self.user, password=self.passphrase,
-                        key_filename=self.idfile)
+            # ssh.connect(host, username=self.user, password=self.passphrase,
+            #             key_filename=self.id_file)
+            ssh.connect(host, username=self.user, key_filename=self.id_file)
             sftp = ssh.open_sftp()
             sftp.put(filename, filename)
             sftp.close()
@@ -92,14 +93,14 @@ class Cluster():
                     s = ("import os; " +
                         f"os.environ.update(OMP_NUM_THREADS=str({num_threads}))")
                     args = rf'--profile-dir={self.profile_dir} -c \"{s}\"'
-                    cmd = (f'ssh -i {self.idfile} {self.user}@{host} ' +
+                    cmd = (f'ssh -i {self.id_file} {self.user}@{host} ' +
                         f'{self.ipengine} {args}')
                     for i in range(num):
                         engine = pexpect.spawn(cmd, encoding='utf-8')
                         if self.log:
                             engine.logfile_read = sys.stdout
-                        engine.expect(rf"Enter passphrase for key '{self.idfile}': ")
-                        engine.sendline(self.passphrase)
+                        # engine.expect(rf"Enter passphrase for key '{self.id_file}': ")
+                        # engine.sendline(self.passphrase)
                         engine.expect(r"Completed registration with id")
                         # time.sleep(0.25)
                         self.engines.append(engine)
@@ -128,7 +129,7 @@ class Cluster():
     def stop_engines(self):
         for engine in self.engines:
             engine.sendintr()
-                
+
     def _timeout(self):
         raise TimeoutExpired
 
@@ -179,12 +180,15 @@ def main():
     p.add_option('--hostfile', action='store',
                  dest='hostfile', default='hosts',
                  type='string', help='Provide a hostfile to use.')
+    p.add_option('--id', action='store',
+                 dest='id', default='id_rsa_mc',
+                 type='string', help='Provide a rsa identity file to use.')
     options, args = p.parse_args()
     filename = options.hostfile
     if not os.path.exists(filename):
         print("hostfile not found")
         sys.exit()
-    cluster = Cluster(filename)
+    cluster = Cluster(filename, options.id, log=True)
     cluster.run()
 
 if __name__ == '__main__':
