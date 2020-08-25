@@ -16,10 +16,6 @@ import paramiko
 from ipyparallel import Client
 
 
-class TimeoutExpired(Exception):
-    pass
-
-
 class Cluster():
 
     def __init__(self, hosts, id='id_rsa_mc', log=False):
@@ -62,6 +58,7 @@ class Cluster():
 
     def stop_controller(self):
         self.pcontroller.sendintr()
+        time.sleep(0.25)
 
     def copy_controll_files(self):
         ssh = paramiko.SSHClient()
@@ -91,10 +88,10 @@ class Cluster():
                 for n, (host, num, num_threads) in enumerate(self.hosts):
                     self.num_engines += num
                     s = ("import os; " +
-                        f"os.environ.update(OMP_NUM_THREADS=str({num_threads}))")
+                         f"os.environ.update(OMP_NUM_THREADS=str({num_threads}))")
                     args = rf'--profile-dir={self.profile_dir} -c \"{s}\"'
                     cmd = (f'ssh -i {self.id_file} {self.user}@{host} ' +
-                        f'{self.ipengine} {args}')
+                           f'{self.ipengine} {args}')
                     for i in range(num):
                         engine = pexpect.spawn(cmd, encoding='utf-8')
                         if self.log:
@@ -102,24 +99,31 @@ class Cluster():
                         # engine.expect(rf"Enter passphrase for key '{self.id_file}': ")
                         # engine.sendline(self.passphrase)
                         engine.expect(r"Completed registration with id")
-                        # time.sleep(0.25)
+                        time.sleep(0.25)
                         self.engines.append(engine)
                     print(f"{host}: engines started")
-                rc = Client(timeout=30)
             except:
                 print('Some engines could not start successfully')
+                self.shutdown()
                 sys.exit()
             count = 1
-            while len(rc.ids) != self.num_engines:
-                print(f"{len(rc.ids)} engines started")
-                time.sleep(2)
-                count += 1
-                if count > 10:
-                    print('{0} engines could not start successfully'.format(
-                        self.num_engines - len(rc.ids)))
-                    self.shutdown()
-                    sys.exit()
-            rc.close()
+            num_started = 0
+            try:
+                rc = Client(timeout=30)
+                while len(rc.ids) != self.num_engines:
+                    print(f"{len(rc.ids)} engines started")
+                    time.sleep(2)
+                    count += 1
+                    if count > 20:
+                        raise TimeoutError
+                num_started = len(rc.ids)
+            except TimeoutError:
+                print('{0} engines could not start successfully'.format(
+                    self.num_engines - num_started))
+                self.shutdown()
+                sys.exit()
+            finally:
+                rc.close()
             print(f'A cluster with {self.num_engines} engines started successfully')
 
     def start(self):
@@ -129,9 +133,10 @@ class Cluster():
     def stop_engines(self):
         for engine in self.engines:
             engine.sendintr()
+            time.sleep(0.25)
 
     def _timeout(self):
-        raise TimeoutExpired
+        raise TimeoutError
 
     def run(self):
         self._loop = asyncio.get_event_loop()
