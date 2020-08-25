@@ -13,6 +13,7 @@ import signal
 import asyncio
 import functools
 import paramiko
+from pexpect.exceptions import TIMEOUT
 from ipyparallel import Client
 
 
@@ -34,6 +35,7 @@ class Cluster():
         self.ipcontroller = self.bin + 'ipcontroller'
         self.ipengine = self.bin + 'ipengine'
         self.pcontroller = None
+        self.rc = None
         self.engines = []
         self.log = log
 
@@ -48,11 +50,16 @@ class Cluster():
     def start_controller(self):
         if self.pcontroller is None:
             cmd = (self.ipcontroller + f" --ip={self.ip}")
-            p = pexpect.spawn(cmd, encoding='utf-8')
-            if self.log:
-                p.logfile_read = sys.stdout
-            p.expect(r"client::client \[.+\] connected", timeout=60)
-            self.pcontroller = p
+            try:
+                p = pexpect.spawn(cmd, encoding='utf-8')
+                if self.log:
+                    p.logfile_read = sys.stdout
+                p.expect(r"client::client \[.+\] connected", timeout=60)
+                self.pcontroller = p
+            except (pexpect.EOF, pexpect.TIMEOUT):
+                if self.pcontroller:
+                    self.stop_controller()
+                sys.exit()
         else:
             print("ipcontroller is running.")
 
@@ -102,28 +109,26 @@ class Cluster():
                         # time.sleep(0.25)
                         self.engines.append(engine)
                     print(f"{host}: engines started")
-            except:
+            except (pexpect.EOF, pexpect.TIMEOUT):
                 print('Some engines could not start successfully')
                 self.shutdown()
                 sys.exit()
             count = 1
             num_started = 0
             try:
-                rc = Client(timeout=30)
-                while len(rc.ids) != self.num_engines:
-                    print(f"{len(rc.ids)} engines started")
+                self.rc = Client(timeout=30)
+                while num_started != self.num_engines:
+                    num_started = len(self.rc.ids)
+                    print(f"{num_started} engines running")
                     time.sleep(2)
                     count += 1
-                    if count > 20:
+                    if count > 60:
                         raise TimeoutError
-                num_started = len(rc.ids)
             except TimeoutError:
                 print('{0} engines could not start successfully'.format(
                     self.num_engines - num_started))
                 self.shutdown()
                 sys.exit()
-            finally:
-                rc.close()
             print(f'A cluster with {self.num_engines} engines started successfully')
 
     def start(self):
@@ -172,8 +177,11 @@ class Cluster():
 
     def shutdown(self):
         print("Shutting down ...", end='')
-        self.stop_engines()
-        self.stop_controller()
+        if self.rc is not None:
+            self.rc.shutdown(hub=True, block=True)
+        else:
+            self.stop_engines()
+            self.stop_controller()
         print("done.")
 
 
