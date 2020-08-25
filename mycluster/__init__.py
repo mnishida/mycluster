@@ -99,7 +99,7 @@ class Cluster():
                         # engine.expect(rf"Enter passphrase for key '{self.id_file}': ")
                         # engine.sendline(self.passphrase)
                         engine.expect(r"Completed registration with id")
-                        time.sleep(0.25)
+                        # time.sleep(0.25)
                         self.engines.append(engine)
                     print(f"{host}: engines started")
             except:
