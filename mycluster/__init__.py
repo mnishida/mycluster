@@ -188,7 +188,7 @@ def main():
     if not os.path.exists(filename):
         print("hostfile not found")
         sys.exit()
-    cluster = Cluster(filename, options.id, log=True)
+    cluster = Cluster(filename, options.id)
     cluster.run()
 
 if __name__ == '__main__':
