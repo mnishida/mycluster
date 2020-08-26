@@ -36,12 +36,11 @@ class Cluster():
         self.ipengine = self.bin + 'ipengine'
         self.engines = []
         self.log = log
-        # self.start_controller()
         self.start()
 
     def __call__(self):
         try:
-            self.event_loop()
+            self.run()
         finally:
             self.shutdown()
 
