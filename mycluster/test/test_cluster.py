@@ -9,7 +9,6 @@ def test_hostsfile():
     import os
     dirname = os.path.dirname(__file__)
     from mycluster import Cluster
-    from ipyparallel import Client
     hosts = [
         ('localhost', 2, 1),
     ]
@@ -21,30 +20,21 @@ def test_hostsfile():
     with open(hostsfile, "r") as fp:
         for line in lines:
             assert_equal(fp.readline(), line)
-    cluster = Cluster(hostsfile)
-    assert_equal(hosts, cluster.hosts)
-    cluster.start_controller()
-    cluster.start_engines()
-    rc = Client()
-    assert_equal(len(rc.ids), 2)
-    cluster.shutdown()
+    with Cluster(hostsfile) as cluster:
+        assert_equal(hosts, cluster.hosts)
+        assert_equal(len(cluster.rc.ids), 2)
 
 
 def test_environ():
     from mycluster import Cluster
-    from ipyparallel import Client
     hosts = [
         ('localhost', 2, 1),
     ]
-    cluster = Cluster(hosts)
-    cluster.start_controller()
-    cluster.start_engines()
-    rc = Client()
-    dview = rc[:]
-    dview.block = True
-    print(rc.ids)
-    dview.execute('import os; num_threads = os.environ.get("OMP_NUM_THREADS")')
-    onts = dview['num_threads']
-    print(onts)
-    assert_equal(onts, ['1', '1'])
-    cluster.shutdown()
+    with Cluster(hosts) as cluster:
+        dview = cluster.rc[:]
+        dview.block = True
+        print(cluster.rc.ids)
+        dview.execute('import os; num_threads = os.environ.get("OMP_NUM_THREADS")')
+        onts = dview['num_threads']
+        print(onts)
+        assert_equal(onts, ['1', '1'])

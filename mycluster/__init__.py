@@ -13,7 +13,6 @@ import signal
 import asyncio
 import functools
 import paramiko
-from pexpect.exceptions import TIMEOUT
 import ipyparallel as ipp
 
 
@@ -37,6 +36,8 @@ class Cluster():
         self.ipengine = self.bin + 'ipengine'
         self.engines = []
         self.log = log
+        # self.start_controller()
+        self.start()
 
     def __call__(self):
         try:
@@ -61,34 +62,27 @@ class Cluster():
     def start_cluster(self):
         if not hasattr(self, 'pcluster'):
             cmd = (self.ipcluster + f' start --ip={self.ip}' +
-                   ' --IPClusterEngines.engine_launcher_class=SSH')
-            try:
-                p = pexpect.spawn(cmd, encoding='utf-8')
-                if self.log:
-                    p.logfile_read = sys.stdout
-                p.expect("Engines appear to have started successfully",
-                         timeout=60)
-                setattr(self, 'pcluster', p)
-            except (pexpect.EOF, pexpect.TIMEOUT):
-                if hasattr(self, 'pcluster'):
-                    delattr(self, 'pcluster')
-                sys.exit()
+                   ' --IPClusterEngines.engine_launcher_class=SSH' +
+                   ' --SSHEngineSetLauncher.delay=0.0' +
+                   ' --IPClusterStart.delay=0.0' +
+                   ' --LocalEngineSetLauncher.delay=0.0')
+            p = pexpect.spawn(cmd, encoding='utf-8')
+            if self.log:
+                p.logfile_read = sys.stdout
+            p.expect("Engines appear to have started successfully",
+                        timeout=60)
+            setattr(self, 'pcluster', p)
         else:
             print("ipcluster is running.")
 
     def start_controller(self):
         if not hasattr(self, 'pcontroller'):
             cmd = (self.ipcontroller + f' --ip={self.ip}')
-            try:
-                p = pexpect.spawn(cmd, encoding='utf-8')
-                if self.log:
-                    p.logfile_read = sys.stdout
-                p.expect(r"client::client \[.+\] connected", timeout=60)
-                setattr(self, 'pcontroller', p)
-            except (pexpect.EOF, pexpect.TIMEOUT):
-                if hasattr(self, 'pcontroller'):
-                    delattr(self, 'pcontroller')
-                sys.exit()
+            p = pexpect.spawn(cmd, encoding='utf-8')
+            if self.log:
+                p.logfile_read = sys.stdout
+            p.expect(r"client::client \[.+\] connected", timeout=60)
+            setattr(self, 'pcontroller', p)
         else:
             print("ipcontroller is running.")
 
@@ -138,7 +132,6 @@ class Cluster():
                     print(f"{host}: engines started")
             except (pexpect.EOF, pexpect.TIMEOUT):
                 print('Some engines could not start successfully')
-                self.shutdown()
                 sys.exit()
             count = 1
             num_started = 0
@@ -155,7 +148,6 @@ class Cluster():
             except (TimeoutError, ipp.error.TimeoutError):
                 print('{0} engines could not start successfully'.format(
                     self.num_engines - num_started))
-                self.shutdown()
                 sys.exit()
             print(f'A cluster with {self.num_engines} engines started successfully')
 
@@ -174,11 +166,7 @@ class Cluster():
                 getattr(signal, signame),
                 functools.partial(self._ask_exit, signame))
         try:
-            # self.start_controller()
-            self.start_cluster()
-            self.start_engines()
             self._loop.run_forever()
-            self.shutdown()
         finally:
             self._loop.close()
 
@@ -205,17 +193,17 @@ class Cluster():
         if self.engines:
             for engine in self.engines:
                 engine.sendintr()
-        self.engines.clear()
+            self.engines.clear()
         if hasattr(self, 'rc'):
             self.rc.shutdown(hub=True)
             delattr(self, 'rc')
-        # hasattr(self, 'pcontroller')
-        # self.pcontroller.sendintr()
-        # delattr(self, 'pcontroller')
-        hasattr(self, 'pcluster')
-        self.pcluster.sendintr()
-        self.pcluster.expect(r"Removing pid file:")
-        delattr(self, 'pcluster')
+        # if hasattr(self, 'pcontroller'):
+        #     self.pcontroller.sendintr()
+        #     delattr(self, 'pcontroller')
+        if hasattr(self, 'pcluster'):
+            self.pcluster.sendintr()
+            self.pcluster.expect(r"Removing pid file:")
+            delattr(self, 'pcluster')
         print("done.")
 
 
@@ -241,8 +229,8 @@ def main():
         log = True
     else:
         log = False
-    cluster = Cluster(filename, options.id, log)
-    cluster.run()
+    with Cluster(filename, options.id, log) as cluster:
+        cluster.run()
 
 if __name__ == '__main__':
     main()
