@@ -18,7 +18,7 @@ import ipyparallel as ipp
 
 class Cluster():
 
-    def __init__(self, hosts, id='id_rsa_mc', log=False):
+    def __init__(self, hosts, id='id_rsa_mc', log=False, nodb=True):
         if isinstance(hosts, str):
             self.hosts = self.load_hosts(hosts)
         else:
@@ -36,6 +36,7 @@ class Cluster():
         self.ipengine = self.bin + 'ipengine'
         self.engines = []
         self.log = log
+        self.nodb = nodb
         self.start()
 
     def __call__(self):
@@ -60,11 +61,13 @@ class Cluster():
 
     def start_cluster(self):
         if not hasattr(self, 'pcluster'):
-            cmd = (self.ipcluster + f' start --ip={self.ip}' +
-                   ' --IPClusterEngines.engine_launcher_class=SSH' +
-                   ' --SSHEngineSetLauncher.delay=0.0' +
-                   ' --IPClusterStart.delay=0.0' +
+            cmd = (self.ipcluster + f' start --ip={self.ip}'
+                   ' --IPClusterEngines.engine_launcher_class=SSH'
+                   ' --SSHEngineSetLauncher.delay=0.0'
+                   ' --IPClusterStart.delay=0.0'
                    ' --LocalEngineSetLauncher.delay=0.0')
+            if self.nodb:
+                cmd += ' -- --nodb'
             p = pexpect.spawn(cmd, encoding='utf-8')
             if self.log:
                 p.logfile_read = sys.stdout
@@ -79,6 +82,8 @@ class Cluster():
     def start_controller(self):
         if not hasattr(self, 'pcontroller'):
             cmd = (self.ipcontroller + f' --ip={self.ip}')
+            if self.nodb:
+                cmd += ' --nodb'
             p = pexpect.spawn(cmd, encoding='utf-8')
             if self.log:
                 p.logfile_read = sys.stdout
