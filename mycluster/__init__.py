@@ -71,9 +71,9 @@ class Cluster():
             p = pexpect.spawn(cmd, encoding='utf-8')
             if self.log:
                 p.logfile_read = sys.stdout
-            p.expect("Engines appear to have started successfully",
-                        timeout=60)
-            # p.expect("Starting 0 Engines with SSH", timeout=30)
+            # p.expect("Engines appear to have started successfully",
+            #             timeout=60)
+            p.expect("Starting  Engines with SSH", timeout=30)
             time.sleep(2)
             setattr(self, 'pcluster', p)
         else:
