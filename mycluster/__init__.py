@@ -73,7 +73,7 @@ class Cluster():
                 p.logfile_read = sys.stdout
             # p.expect("Engines appear to have started successfully",
             #             timeout=60)
-            p.expect("Starting  Engines with SSH", timeout=30)
+            p.expect("Starting  engines with", timeout=30)
             time.sleep(2)
             setattr(self, 'pcluster', p)
         else:
