@@ -61,7 +61,7 @@ class Cluster():
 
     def start_cluster(self):
         if not hasattr(self, 'pcluster'):
-            cmd = (self.ipcluster + f' start --ip={self.ip}'
+            cmd = (self.ipcluster + f' start -n 0 --ip={self.ip}'
                    ' --IPClusterEngines.engine_launcher_class=SSH'
                    ' --SSHEngineSetLauncher.delay=0.0'
                    ' --IPClusterStart.delay=0.0'
@@ -71,9 +71,9 @@ class Cluster():
             p = pexpect.spawn(cmd, encoding='utf-8')
             if self.log:
                 p.logfile_read = sys.stdout
-            # p.expect("Engines appear to have started successfully",
-            #             timeout=60)
-            p.expect("Starting 0 Engines with SSH", timeout=30)
+            p.expect("Engines appear to have started successfully",
+                        timeout=60)
+            # p.expect("Starting 0 Engines with SSH", timeout=30)
             time.sleep(2)
             setattr(self, 'pcluster', p)
         else:
