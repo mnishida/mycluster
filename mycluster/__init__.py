@@ -209,7 +209,7 @@ class Cluster():
         if hasattr(self, 'pcluster'):
             self.pcluster.sendintr()
             # self.pcluster.expect(r"Removing pid file:")
-            self.pcluster.expect(r"'exit code': 0")
+            self.pcluster.expect(r"engine set stopped")
             delattr(self, 'pcluster')
         print("done.")
 
