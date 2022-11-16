@@ -208,7 +208,8 @@ class Cluster():
         #     delattr(self, 'pcontroller')
         if hasattr(self, 'pcluster'):
             self.pcluster.sendintr()
-            self.pcluster.expect(r"Removing pid file:")
+            # self.pcluster.expect(r"Removing pid file:")
+            self.pcluster.expect(r"Stopping engine(s)")
             delattr(self, 'pcluster')
         print("done.")
 
